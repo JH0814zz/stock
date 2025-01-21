@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주식 거래 게임</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: #f5f5f5;
+        }
+
+        .balance {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .tabs {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .tab-button {
+            padding: 10px 20px;
+            border: none;
+            background-color: transparent;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            color: #666;
+            transition: all 0.3s ease;
+        }
+
+        .tab-button:hover {
+            color: #8884d8;
+        }
+
+        .tab-button.active {
+            color: #8884d8;
+            border-bottom: 2px solid #8884d8;
+            margin-bottom: -12px;
+        }
+
+        .tab-content {
+            display: none;
+            height: calc(100vh - 200px);
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        /* 스크롤바 스타일링 */
+        .tab-content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .tab-content::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        .tab-content::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .stock-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .stock-item {
+            display: flex;
+            gap: 10px;
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .stock-button {
+            flex: 1;
+            padding: 15px;
+            background-color: #8884d8;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: background-color 0.3s ease;
+        }
+
+        .stock-button:hover {
+            background-color: #7673b8;
+        }
+
+        .chart-button {
+            padding: 15px;
+            background-color: white;
+            border: 1px solid #8884d8;
+            color: #8884d8;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+
+        .chart-button:hover {
+            background-color: #8884d8;
+            color: white;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+
+        .modal.active {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 800px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .chart-container {
+            width: 100%;
+            height: 400px;
+            position: relative;
+        }
+
+        .profit {
+            color: #4caf50;
+            font-weight: 500;
+        }
+
+        .loss {
+            color: #f44336;
+            font-weight: 500;
+        }
+
+        .input-group {
+            margin: 20px 0;
+        }
+
+        input[type="number"] {
+            padding: 12px;
+            width: 100%;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+
+        .stock-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .stock-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .stock-card-header span {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        #modalTitle {
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+
+        #modalStockInfo {
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: #666;
+        }
+
+        #tradeButton {
+            width: 100%;
+            padding: 12px;
+            background-color: #8884d8;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+
+        #tradeButton:hover {
+            background-color: #7673b8;
+        }
+    </style>
+</head>
+<body>
+    <!-- HTML 구조는 동일하게 유지 -->
+    <div class="balance">잔고: <span id="balance">1,000,000</span>원</div>
+
+    <div class="tabs">
+        <div class="tab-buttons">
+            <button class="tab-button active" data-tab="buy">매수</button>
+            <button class="tab-button" data-tab="sell">매도</button>
+            <button class="tab-button" data-tab="charts">차트</button>
+        </div>
+
+        <div id="buyTab" class="tab-content active">
+            <div class="stock-grid" id="buyGrid"></div>
+        </div>
+
+        <div id="sellTab" class="tab-content">
+            <div class="stock-grid" id="sellGrid"></div>
+        </div>
+
+        <div id="chartsTab" class="tab-content">
+            <div id="chartsGrid"></div>
+        </div>
+    </div>
+
+    <div id="tradeModal" class="modal">
+        <div class="modal-content">
+            <h2 id="modalTitle">주식 거래</h2>
+            <p id="modalStockInfo"></p>
+            <!-- 매수/매도 모달 내 실시간 계산 표시 -->
+            <div class="input-group">
+              <input type="number" id="tradeAmount" placeholder="수량을 입력하세요">
+              <p id="realTimeCost"></p>
+              <p id="realTimeBalance"></p>
+              <button id="tradeButton">거래하기</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="chartModal" class="modal">
+        <div class="modal-content">
+            <h2 id="chartTitle"></h2>
+            <div class="chart-container">
+                <canvas id="stockChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const INITIAL_BALANCE = 1000000;
+        const DISPLAY_SECONDS = 120; // 표시할 시간 범위
+        const INITIAL_STOCKS = Array.from({ length: 10 }, (_, i) => ({
+            id: `STOCK${i + 1}`,
+            price: Math.floor(Math.random() * 4500) + 500,
+            buyHistory: []
+        }));
+
+        let balance = INITIAL_BALANCE;
+        let stocks = INITIAL_STOCKS;
+        let portfolio = {};
+        let priceHistory = Object.fromEntries(
+            stocks.map(stock => [stock.id, [{ time: 0, price: stock.price }]])
+        );
+        let selectedStock = null;
+        let tradeType = null;
+        let time = 0;
+        let chartInstance = null;
+
+        // 차트 공통 옵션
+        const chartOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            scales: {
+                x: {
+                    type: 'linear',
+                    ticks: {
+                        stepSize: 20,
+                        callback: value => `${value}초`
+                    },
+                    grid: {
+                        color: '#f0f0f0'
+                    }
+                },
+                y: {
+                    ticks: {
+                        callback: value => formatPrice(value)
+                    },
+                    grid: {
+                        color: '#f0f0f0'
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: context => formatPrice(context.raw) + '원'
+                    }
+                }
+            }
+        };
+
+        function formatPrice(price) {
+            return new Intl.NumberFormat('ko-KR').format(Math.round(price));
+        }
+
+        function updateBalance() {
+            document.getElementById('balance').textContent = formatPrice(balance);
+        }
+
+        function showModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+        }
+
+        function hideModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        function calculateStockStats(stockId) {
+            const stock = stocks.find(s => s.id === stockId);
+            const amount = portfolio[stockId] || 0;
+            
+            if (amount === 0) return null;
+
+            const purchases = stock.buyHistory;
+            const totalCost = purchases.reduce((sum, p) => sum + (p.price * p.amount), 0);
+            const totalShares = purchases.reduce((sum, p) => sum + p.amount, 0);
+            const avgPrice = totalShares > 0 ? totalCost / totalShares : 0;
+            const currentValue = stock.price * amount;
+            const profitLoss = currentValue - (avgPrice * amount);
+            const profitRate = avgPrice > 0 ? (profitLoss / (avgPrice * amount)) * 100 : 0;
+
+            return {
+                currentPrice: stock.price,
+                shares: amount,
+                avgPrice,
+                profitLoss,
+                profitRate
+            };
+        }
+
+        function showStockChart(stockId) {
+            const stock = stocks.find(s => s.id === stockId);
+            document.getElementById('chartTitle').textContent = stockId;
+            
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            const ctx = document.getElementById('stockChart').getContext('2d');
+            const data = priceHistory[stockId];
+            const currentTime = time;
+            const startTime = Math.max(0, currentTime - DISPLAY_SECONDS);
+            
+            const visibleData = data.filter(d => d.time >= startTime);
+
+            // 차트 옵션 업데이트: 시간 범위를 동적으로 설정
+            const chartOptionsWithRange = {
+                ...chartOptions,
+                scales: {
+                    ...chartOptions.scales,
+                    x: {
+                        ...chartOptions.scales.x,
+                        min: startTime,
+                        max: currentTime
+                    }
+                }
+            };
+
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: visibleData.map(d => d.time),
+                    datasets: [{
+                        data: visibleData.map(d => d.price),
+                        borderColor: '#8884d8',
+                        borderWidth: 2,
+                        tension: 0.1,
+                        pointRadius: 0
+                    }]
+                },
+                options: chartOptionsWithRange
+            });
+
+            showModal('chartModal');
+        }
+
+        function updateCharts() {
+            const chartsGrid = document.getElementById('chartsGrid');
+            chartsGrid.innerHTML = stocks.map(stock => {
+                const stats = calculateStockStats(stock.id);
+                return `
+                    <div class="stock-card">
+                        <div class="stock-card-header">
+                            <span>${stock.id}</span>
+                            <div>
+                                <p>현재가: ${formatPrice(stock.price)}원</p>
+                                ${stats ? `
+                                    <p>내 주식: ${stats.shares}주 
+                                        <span class="${stats.profitLoss >= 0 ? 'profit' : 'loss'}">
+                                            (${formatPrice(stats.avgPrice)}원)
+                                        </span>
+                                    </p>
+                                    <p class="${stats.profitRate >= 0 ? 'profit' : 'loss'}">
+                                        손익률: ${stats.profitRate.toFixed(2)}%
+                                    </p>
+                                    <p class="${stats.profitLoss >= 0 ? 'profit' : 'loss'}">
+                                        순이익: ${formatPrice(stats.profitLoss)}원
+                                    </p>
+                                ` : ''}
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="chart-${stock.id}"></canvas>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            stocks.forEach(stock => {
+                const ctx = document.getElementById(`chart-${stock.id}`).getContext('2d');
+                const data = priceHistory[stock.id];
+                const startTime = Math.max(0, time - DISPLAY_SECONDS);
+                const visibleData = data.filter(d => d.time >= startTime);
+
+                const chartOptionsWithRange = {
+                    ...chartOptions,
+                    scales: {
+                        ...chartOptions.scales,
+                        x: {
+                            ...chartOptions.scales.x,
+                            min: startTime,
+                            max: time
+                        }
+                    }
+                };
+
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: visibleData.map(d => d.time),
+                        datasets: [{
+                            data: visibleData.map(d => d.price),
+                            borderColor: '#8884d8',
+                            borderWidth: 2,
+                            tension: 0.1,
+                            pointRadius: 0
+                        }]
+                    },
+                    options: chartOptionsWithRange
+                });
+            });
+        }
+
+        function updateStockGrids() {
+            const buyGrid = document.getElementById('buyGrid');
+            const sellGrid = document.getElementById('sellGrid');
+            
+            buyGrid.innerHTML = stocks.map(stock => `
+                <div class="stock-item">
+                    <button class="stock-button" onclick="handleTradeClick('${stock.id}', 'buy')">
+                        ${stock.id}: ${formatPrice(stock.price)}원
+                    </button>
+                    <button class="chart-button" onclick="showStockChart('${stock.id}')">
+                        차트
+                    </button>
+                </div>
+            `).join('');
+
+            sellGrid.innerHTML = Object.entries(portfolio).map(([stockId, amount]) => {
+                const stats = calculateStockStats(stockId);
+                if (!stats) return '';
+                return `
+                    <div class="stock-item">
+                        <button class="stock-button" onclick="handleTradeClick('${stockId}', 'sell')">
+                            <div>${stockId}: ${amount}주</div>
+                            <div class="${stats.profitRate >= 0 ? 'profit' : 'loss'}">
+                                ${stats.profitRate.toFixed(2)}%
+                                (${formatPrice(stats.profitLoss)}원)
+                            </div>
+                        </button>
+                        <button class="chart-button" onclick="showStockChart('${stockId}')">
+                            차트
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function handleTradeClick(stockId, type) {
+            selectedStock = stockId;
+            tradeType = type;
+            const stock = stocks.find(s => s.id === stockId);
+            
+            document.getElementById('modalTitle').textContent = 
+                type === 'buy' ? '주식 매수' : '주식 매도';
+            document.getElementById('modalStockInfo').textContent = 
+                `${stockId}: ${formatPrice(stock.price)}원`;
+            document.getElementById('tradeAmount').value = '';
+            
+            showModal('tradeModal');
+            document.getElementById('tradeAmount').focus();
+        }
+
+        function handleTrade() {
+            const amount = parseInt(document.getElementById('tradeAmount').value);
+            if (!amount || amount <= 0) {
+                alert('올바른 수량을 입력하세요.');
+                return;
+            }
+
+            const stock = stocks.find(s => s.id === selectedStock);
+            
+            if (tradeType === 'buy') {
+                const totalCost = stock.price * amount;
+                if (totalCost > balance) {
+                    alert('잔고가 부족합니다!');
+                    return;
+                }
+                balance -= totalCost;
+                portfolio[selectedStock] = (portfolio[selectedStock] || 0) + amount;
+                stock.buyHistory.push({ price: stock.price, amount });
+            } else {
+                if (amount > (portfolio[selectedStock] || 0)) {
+                    alert('보유 주식이 부족합니다!');
+                    return;
+                }
+                balance += stock.price * amount;
+                portfolio[selectedStock] -= amount;
+                if (portfolio[selectedStock] <= 0) {
+                    delete portfolio[selectedStock];
+                    stock.buyHistory = [];
+                }
+            }
+            
+            hideModal('tradeModal');
+            updateBalance();
+            updateStockGrids();
+            if (document.getElementById('chartsTab').classList.contains('active')) {
+                updateCharts();
+            }
+        }
+
+        // 이벤트 리스너 설정
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', () => {
+                const tab = button.dataset.tab;
+                
+                document.querySelectorAll('.tab-button').forEach(btn => 
+                    btn.classList.remove('active')
+                );
+                document.querySelectorAll('.tab-content').forEach(content => 
+                    content.classList.remove('active')
+                );
+                
+                button.classList.add('active');
+                document.getElementById(`${tab}Tab`).classList.add('active');
+
+                if (tab === 'charts') {
+                    updateCharts();
+                }
+            });
+        });
+
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    hideModal(modal.id);
+                    if (modal.id === 'chartModal' && chartInstance) {
+                        chartInstance.destroy();
+                    }
+                }
+            });
+        });
+
+        document.getElementById('tradeButton').addEventListener('click', handleTrade);
+
+        document.getElementById('tradeAmount').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                handleTrade();
+            }
+        });
+
+        // 가격 업데이트 타이머
+        setInterval(() => {
+            time += 1;
+            stocks = stocks.map(stock => ({
+                ...stock,
+                price: Math.max(100, stock.price + Math.floor(Math.random() * 21) - 10)
+            }));
+
+            stocks.forEach(stock => {
+                priceHistory[stock.id].push({
+                    time,
+                    price: stock.price
+                });
+            });
+
+            updateStockGrids();
+            
+            if (document.getElementById('chartsTab').classList.contains('active')) {
+                updateCharts();
+            }
+        }, 1000);
+
+        // 초기화
+        updateBalance();
+        updateStockGrids();
+</script>
+</body>
+</html>
